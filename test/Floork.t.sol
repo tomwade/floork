@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 import {Test} from 'forge-std/Test.sol';
 
-import {Floork} from '../src/RageQuit.sol';
+import {Floork} from '../src/Floork.sol';
 import {ERC20Mock} from './mocks/ERC20Mock.sol';
 
 contract FloorkTest is Test {
@@ -12,6 +12,11 @@ contract FloorkTest is Test {
     /// Our funding tokens
     ERC20Mock floor;
     Floork floork;
+
+    /// Expected OZ errors
+    error AlreadyInitialized();
+    error ERC20InsufficientBalance(address, uint, uint);
+    error OwnableUnauthorizedAccount(address);
 
     constructor() {
         // Create 2 tokens that will fund our {Floork} contract
@@ -84,7 +89,7 @@ contract FloorkTest is Test {
 
         // When we try and call the `burnAndRedeem` function we should get an error as we
         // don't have sufficient balanace.
-        vm.expectRevert('ERC20: burn amount exceeds balance');
+        vm.expectRevert(abi.encodeWithSelector(ERC20InsufficientBalance.selector, address(this), amount, amount + 1));
         floork.burnAndRedeem(amount + 1);
     }
 
@@ -110,7 +115,7 @@ contract FloorkTest is Test {
     function test_CannotReinitializeAsOwner() public {
         floork.initialize();
 
-        vm.expectRevert('Initializable: contract is already initialized');
+        vm.expectRevert(AlreadyInitialized.selector);
         floork.initialize();
     }
 
@@ -118,7 +123,7 @@ contract FloorkTest is Test {
         vm.assume(caller != address(this));
 
         vm.prank(caller);
-        vm.expectRevert('Ownable: caller is not the owner');
+        vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, caller));
         floork.initialize();
     }
 

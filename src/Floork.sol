@@ -29,7 +29,7 @@ contract Floork is ERC20, Initializable, Ownable {
      *
      * @param _floorToken The existing FLOOR token address
      */
-    constructor(address _floorToken) ERC20('FloorDAO Fork', 'FLOORK') {
+    constructor(address _floorToken) ERC20('FloorDAO Fork', 'FLOORK') Ownable(msg.sender) {
         // Ensure that the provided FLOOR token is not a NULL address
         require(_floorToken != address(0), 'Floor token address cannot be zero');
 
