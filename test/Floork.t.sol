@@ -44,6 +44,24 @@ contract FloorkTest is Test {
         // When we try and call the `burnAndRedeem` function we should receive the same amount
         // of tokens in return.
         floork.burnAndRedeem(amount);
+
+        // We should now hold 0 FLOOR tokens and `amount` of FLOORK tokens, with the FLOORK
+        // amount multiplied by 9 decimals to accomodate accuracy conversion to 18 decimal).
+        assertEq(floor.balanceOf(address(this)), 0);
+        assertEq(floork.balanceOf(address(this)), amount * (10 ** 9));
+
+        // We want to confirm that the `floork` contract holds no FLOOR, as it should have been
+        // burnt. This will also be reflected in the change of total supply, which as we are
+        // using a mock will want to be zero.
+        assertEq(floor.totalSupply(), 0);
+        assertEq(floor.balanceOf(address(floork)), 0);
+
+        // The total supply of the FLOORK token should be the same as the initial `amount` as
+        // it is minted on demand. The FLOORK contract should also not hold any tokens of
+        // itself. We do, however, need to multiply the amount by 9 decimals to accomodate the
+        // token decimal accuracy conversion.
+        assertEq(floork.totalSupply(), amount * (10 ** 9));
+        assertEq(floork.balanceOf(address(floork)), 0);
     }
 
     function test_CannotBurnAndRedeemBeforeStart(uint amount) public mintFloorTokens(amount) {
@@ -109,17 +127,26 @@ contract FloorkTest is Test {
     }
 
     function test_CanInitializeAsOwner() public {
+        // Before initialisation, we should see that the contract is not active
+        assertFalse(floork.isActive());
+        assertEq(floork.activationEndTime(), 0);
+
+        // We can then initialise the contract, which will activate the functionality
         floork.initialize();
+        assertTrue(floork.isActive());
+        assertEq(floork.activationEndTime(), block.timestamp + 7 days);
     }
 
     function test_CannotReinitializeAsOwner() public {
         floork.initialize();
 
+        // When we try to initialize another time, we should expect a revert
         vm.expectRevert(AlreadyInitialized.selector);
         floork.initialize();
     }
 
     function test_CannotInitializeAsNonOwner(address caller) public {
+        // Ensure that the caller is not this test address, as it's the owner
         vm.assume(caller != address(this));
 
         vm.prank(caller);
@@ -128,19 +155,25 @@ contract FloorkTest is Test {
     }
 
     function test_CannotSendEthToContract(uint amount) public {
-        vm.assume(amount != 0);
-
+        // Any amount of ETH sent should be reverted
         (bool success,) = address(floork).call{value: amount}('');
         assertFalse(success);
     }
 
     function assumeFloorAmountRange(uint amount) internal pure {
+        // Sets a possible amount value of 1 to the an amount that can be converted to
+        // 18 decimal and still be within the uint max range. 
         vm.assume(amount > 0);
         vm.assume(amount < type(uint).max / (10 ** 9));
     }
 
     modifier mintFloorTokens(uint amount) {
+        // Mint FLOOR tokens to our test contract
         floor.mint(address(this), amount);
+
+        // Ensure we have the expected amount
+        assertEq(floor.balanceOf(address(this)), amount);
+
         _;
     }
 
