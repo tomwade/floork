@@ -17,12 +17,12 @@ contract ConfirmationContractTest is Test {
     bytes MESSAGE = 'Message to be signed';
 
     constructor() {
-    	// Deploy our signature contract
-        signature = new ConfirmationContract(CALLER, MESSAGE);
-
         // Generate a user from the private key
         signerPrivateKey = 0xabc123;
         CALLER = vm.addr(signerPrivateKey);
+
+    	// Deploy our signature contract
+        signature = new ConfirmationContract(CALLER, MESSAGE);
     }
 
     function test_CanSignFromAcceptedAddress() public {
@@ -30,16 +30,18 @@ contract ConfirmationContractTest is Test {
 
     	// https://book.getfoundry.sh/cheatcodes/sign
         vm.startPrank(CALLER);
+
         bytes32 digest = _toEthSignedMessageHash(keccak256(abi.encodePacked(CALLER, uint(0), nonce)));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, digest);
         bytes memory _signature = abi.encodePacked(r, s, v); // note the order here is different from line above.
 
         signature.confirmData(_signature, MESSAGE);
+
         vm.stopPrank();
     }
 
-    function test_CannotSignFromUnknownAddress(uint256 unknownPrivateKey) public {
-    	vm.assume(unknownPrivateKey != 0);
+    function test_CannotSignFromUnknownAddress(uint unknownPrivateKey) public {
+    	unknownPrivateKey = bound(unknownPrivateKey, 1, type(uint128).max);
     	vm.assume(unknownPrivateKey != signerPrivateKey);
 
     	address unknown = vm.addr(unknownPrivateKey);
@@ -51,7 +53,7 @@ contract ConfirmationContractTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(unknownPrivateKey, digest);
         bytes memory _signature = abi.encodePacked(r, s, v);
 
-    	vm.expectRevert();
+    	vm.expectRevert('Invalid signer');
     	signature.confirmData(_signature, MESSAGE);
 
     	vm.stopPrank();

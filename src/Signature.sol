@@ -35,6 +35,8 @@ contract ConfirmationContract {
 
     // Function to confirm data using a gasless signature
     function confirmData(bytes memory signature, bytes memory _dataToConfirm) external view returns (bool) {
+    	require(msg.sender == signer, 'Invalid signer');
+
         Confirmation memory confirmation = Confirmation(_dataToConfirm);
         return verifySignature(signer, signature, confirmation);
     }
